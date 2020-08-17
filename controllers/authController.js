@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const { exists } = require('../models/userModel');
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -17,7 +16,9 @@ exports.signup = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
+    role: req.body.role,
   });
+  console.log(req.body, newUser);
 
   const token = signToken(newUser._id);
 
@@ -67,18 +68,35 @@ exports.protect = catchAsync(async (req, res, next) => {
   //2) Verification token
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
   //3) Check if user still exists
-  // const freshUser = await User.findById(decoded.id);
-  // if (!freshUser) {
-  //   return next(new AppError("The user Belonging to the token doesn't exists"));
-  // }
-  // //4) Check if user changed password after JWT(Token) was issued
-  // if (freshUser.changedPasswordAfter(decoded.iat)) {
-  //   return next(
-  //     new AppError('User recently changed password! Please Login again.')
-  //   );
-  // }
+  const currentUser = await User.findById(decoded.id);
+  if (!currentUser) {
+    return next(
+      new AppError("The user Belonging to the token doesn't exists", 401)
+    );
+  }
+  //4) Check if user changed password after JWT(Token) was issued
+  if (currentUser.changedPasswordAfter(decoded.iat)) {
+    return next(
+      new AppError('User recently changed password! Please Login again.', 401)
+    );
+  }
 
-  // //Grant Access to protected Route
-  // req.user = freshUser;
+  //Grant Access to protected Route
+  console.log(currentUser);
+  req.user = currentUser;
   next();
 });
+
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    console.log(req.user);
+    //roles ['admin', 'lead-guide'], role ='user'
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError('You do not have permissions to perform this action', 403)
+      );
+    }
+
+    next();
+  };
+};

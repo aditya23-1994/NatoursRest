@@ -17,6 +17,11 @@ const userSchema = new mongoose.Schema({
     validate: [validator.isEmail, 'Please provide a valid email'],
   },
   photo: String,
+  role: {
+    type: String,
+    enum: ['user', 'guide', 'lead-guide', 'admin'],
+    default: 'user',
+  },
   password: {
     type: String,
     required: [true, 'Please provide a password'],
@@ -49,15 +54,15 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-//Instance method.Available to all the user documents....
+// Instance method.Available to all the user documents....
 userSchema.methods.correctPassword = async function (
   candidatePassword,
   userPassword
 ) {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
-
-userSchema.methods.changedPasswordAfter = async function (JWTTimestamp) {
+//Using async without knowing about the function has caused a huge bug as the function gets executed while the function relying on that particular method still in process.
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   if (this.passwordChangedAt) {
     const changedTimestamp = parseInt(
       this.passwordChangedAt.getTime() / 1000,
