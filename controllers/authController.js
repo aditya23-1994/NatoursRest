@@ -82,14 +82,12 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   //Grant Access to protected Route
-  console.log(currentUser);
   req.user = currentUser;
   next();
 });
 
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
-    console.log(req.user);
     //roles ['admin', 'lead-guide'], role ='user'
     if (!roles.includes(req.user.role)) {
       return next(
@@ -99,4 +97,20 @@ exports.restrictTo = (...roles) => {
 
     next();
   };
+};
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  //1) Get user based on POSTED email
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    return next(new AppError('There is no user with email address', 404));
+  }
+  //2) Generate the reandom reset token
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+  //3 Send it ot the user's email
+});
+
+exports.resetPassword = (req, res, next) => {
+
 };
