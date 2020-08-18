@@ -29,6 +29,7 @@ exports.getAllTour = catchAsync(async (req, res) => {
 });
 
 exports.getTour = catchAsync(async (req, res, next) => {
+  //Populate to gain access to the refrenced tour guide.
   const tour = await Tour.findById(req.params.id);
 
   if (!tour) {
